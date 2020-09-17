@@ -1,0 +1,4 @@
+[run]
+omit = *test*
+[tool:pytest]
+addopts = --cov=slicer --cov-report term-missing --doctest-modules
