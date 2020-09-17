@@ -207,7 +207,15 @@ def _handle_aliases(index_tup: Tuple, alias_lookup) -> Tuple:
 
 
 class Tracked(AtomicSlicer):
-    def __init__(self, o: Any, dim: Union[int, List, None, str] = "auto"):
+    """ Tracked defines an object that slicer wraps."""
+
+    def __init__(self, o: Any, dim: Union[int, List, tuple, None, str] = "auto"):
+        """ Defines an object that will be wrapped by slicer.
+
+        Args:
+            o: Object that will be tracked for slicer.
+            dim: Target dimension(s) slicer will index on for this object.
+        """
         super().__init__(o)
 
         # Protected attribute that can be overriden.
@@ -226,14 +234,14 @@ class Tracked(AtomicSlicer):
             raise ValueError(f"Cannot handle dim of type: {type(dim)}")
 
 
-# TODO: Document.
 class Obj(Tracked):
+    """ An object that slicer wraps. """
     def __init__(self, o, dim="auto"):
         super().__init__(o, dim)
 
 
-# NOTE: Alias is different at init as dim is now required.
 class Alias(Tracked):
+    """ Defines a tracked object as well as additional __getitem__ keys. """
     def __init__(self, o, dim):
         if not (
             isinstance(dim, int) or isinstance(dim, list) and len(dim) <= 1

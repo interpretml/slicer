@@ -2,7 +2,9 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .coverage
+coverage.xml
 build/
+junit/
 dist/
 *.egg-info/
 htmlcov/
