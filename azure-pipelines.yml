@@ -51,7 +51,7 @@ jobs:
       condition: startsWith(variables['image.name'], 'macOS')
       displayName: 'Install pytorch (mac)'
     - script: |
-        python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
+        python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=slicer --cov-report=xml --cov-report=html
       displayName: 'Run pytest'
     - task: PublishTestResults@2
       condition: succeededOrFailed()
