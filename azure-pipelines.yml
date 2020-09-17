@@ -45,8 +45,11 @@ jobs:
       condition: succeeded()
       displayName: 'Install test requirements'
     - script: python -m pip install torch==1.6.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-      condition: succeeded()
-      displayName: 'Install pytorch'      
+      condition: or(startsWith(variables['image.name'], 'windows'), startsWith(variables['image.name'], 'ubuntu'))
+      displayName: 'Install pytorch (windows/linux)'      
+    - script: python -m pip install torch
+      condition: startsWith(variables['image.name'], 'macOS')
+      displayName: 'Install pytorch (mac)'
     - script: |
         python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
       displayName: 'Run pytest'
