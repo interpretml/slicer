@@ -222,6 +222,8 @@ class Tracked(AtomicSlicer):
             self.dim = [dim]
         elif isinstance(dim, list):
             self.dim = dim
+        elif isinstance(dim, tuple):
+            self.dim = list(dim)
         else:  # pragma: no cover
             raise ValueError(f"Cannot handle dim of type: {type(dim)}")
 
@@ -236,7 +238,7 @@ class Obj(Tracked):
 class Alias(Tracked):
     def __init__(self, o, dim):
         if not (
-            isinstance(dim, int) or isinstance(dim, list) and len(dim) <= 1
+            isinstance(dim, int) or (isinstance(dim, (list, tuple)) and len(dim) <= 1)
         ):  # pragma: no cover
             raise ValueError("Aliases must track a single dimension")
         super().__init__(o, dim)
