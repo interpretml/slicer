@@ -255,6 +255,26 @@ def test_handle_newaxis_ellipses():
 
     expanded_index_tup = _handle_newaxis_ellipses(index_tup, max_dim)
     assert expanded_index_tup == (1, slice(None), slice(None))
+    
+    
+def test_tracked_dim_arg_smoke():
+    li = ['A', 'B']
+    _ = A(li, dim=0)
+    _ = A(li, dim=[0])
+    _ = A(li, dim=(0,))
+
+    # Aliases must have a single dim
+    with pytest.raises(Exception):
+        _ = A(li, dim=None)
+
+    with pytest.raises(Exception):
+        _ = A(li, dim=[0,1])
+
+    _ = Obj(li, dim=0)
+    _ = Obj(li, dim=[0])
+    _ = Obj(li, dim=(0,))
+
+    assert True
 
 
 def test_atomic_1d():
