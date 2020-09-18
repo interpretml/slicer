@@ -5,8 +5,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="slicer",
-    version="0.0.3",
-    author="Anonymous developers from identifiable interpretability packages.",
+    version="0.0.4",
+    author="InterpretML",
     author_email="interpret@microsoft.com",
     description="A small package for big slicing.",
     long_description=long_description,
