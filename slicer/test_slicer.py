@@ -270,9 +270,9 @@ def test_tracked_dim_arg_smoke():
     with pytest.raises(Exception):
         _ = A(li, dim=[0,1])
 
-    _ = Obj(li, dim=0)
-    _ = Obj(li, dim=[0])
-    _ = Obj(li, dim=(0,))
+    _ = O(li, dim=0)
+    _ = O(li, dim=[0])
+    _ = O(li, dim=(0,))
 
     assert True
 
