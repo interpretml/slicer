@@ -2,16 +2,23 @@
 An unholy balance of use cases and test coverage.
 """
 
+import pytest
+
 from .slicer import AtomicSlicer
 
 from . import Slicer as S
 from . import Alias as A
 from . import Obj as O
 
-import pytest
 import pandas as pd
-import torch
 import numpy as np
+import torch
+from scipy.sparse import csc_matrix
+from scipy.sparse import csr_matrix
+from scipy.sparse import dok_matrix
+from scipy.sparse import lil_matrix
+
+
 from .utils_testing import ctr_eq
 
 
@@ -214,6 +221,38 @@ def test_slicer_simple_di():
     assert ctr_eq(actual, 3)
 
 
+def test_slicer_sparse():
+    array = np.array([[1, 0, 4], [0, 0, 5], [2, 3, 6]])
+    csc_array = csc_matrix(array)
+    csr_array = csr_matrix(array)
+    dok_array = dok_matrix(array)
+    lil_array = lil_matrix(array)
+
+    candidates = [csc_array, csr_array, dok_array, lil_array]
+    for candidate in candidates:
+        slicer = S(candidate)
+        actual = slicer[0, 0]
+        assert ctr_eq(actual.o, 1)
+        actual = slicer[1, 1]
+        assert ctr_eq(actual.o, 0)
+
+        actual = slicer[0]
+        expected = np.array([1, 0, 4])
+        assert ctr_eq(actual.o, expected)
+
+        actual = slicer[:, 1]
+        expected = np.array([0, 0, 3])
+        assert ctr_eq(actual.o, expected)
+
+        actual = slicer[:, :]
+        expected = np.array([[1, 0, 4], [0, 0, 5], [2, 3, 6]])
+        assert ctr_eq(actual.o, expected)
+
+        actual = slicer[0, :]
+        expected = np.array([1, 0, 4])
+        assert ctr_eq(actual.o, expected)
+
+
 def test_slicer_torch():
     import torch
 
@@ -277,7 +316,7 @@ def test_tracked_dim_arg_smoke():
     assert True
 
 
-def test_atomic_1d():
+def test_operations_1d():
     elements = [1, 2, 3, 4]
     li = elements
     tup = tuple(elements)
@@ -305,12 +344,17 @@ def test_atomic_1d():
             assert ctr_eq(slicer[0:3:2], elements[0:3:2])
 
 
-def test_atomic_2d():
+def test_operations_2d():
     elements = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     li = elements
     df = pd.DataFrame(elements, columns=["A", "B", "C"])
 
-    containers = [li, df]
+    sparse_csc = csc_matrix(elements)
+    sparse_csr = csr_matrix(elements)
+    sparse_dok = dok_matrix(elements)
+    sparse_lil = lil_matrix(elements)
+
+    containers = [li, df, sparse_csc, sparse_csr, sparse_dok, sparse_lil]
     for _, ctr in enumerate(containers):
         slicer = AtomicSlicer(ctr)
 
@@ -337,7 +381,7 @@ def test_atomic_2d():
         assert ctr_eq(slicer[..., 0], [elements[i][0] for i, _ in enumerate(elements)])
 
 
-def test_atomic_3d():
+def test_operations_3d():
     # 3-dimensional fixed dimension case
     elements = [
         [[1, 2, 3], [4, 5, 6]],

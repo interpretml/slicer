@@ -7,9 +7,16 @@ import numbers
 import numpy as np
 import torch
 import pandas as pd
+from scipy.sparse import csc_matrix
+from scipy.sparse import csr_matrix
+from scipy.sparse import dok_matrix
+from scipy.sparse import lil_matrix
 
 
 def coerced(o: Any):
+    if isinstance(o, (csc_matrix, csr_matrix, dok_matrix, lil_matrix)):
+        o = o.toarray()
+
     to_list_collections = tuple([np.ndarray, torch.Tensor, pd.core.series.Series])
     if isinstance(o, (list, tuple)):
         return o

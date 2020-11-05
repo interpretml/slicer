@@ -405,7 +405,7 @@ class ArrayHandler(BaseHandler):
 
         # Process native array dimensions
         cut_index = index_tup[:cut]
-        is_element = True if isinstance(cut_index[-1], int) else False
+        is_element = any([True if isinstance(x, int) else False for x in cut_index])
         sliced_o = o[cut_index]
 
         return is_element, sliced_o, cut
@@ -413,7 +413,19 @@ class ArrayHandler(BaseHandler):
     @classmethod
     def tail_slice(cls, o, tail_index, max_dim, flatten=True):
         if flatten:
-            return AtomicSlicer(o, max_dim=max_dim)[tail_index]
+            # NOTE: If we're dealing with a scipy matrix,
+            #       we have to manually flatten it ourselves
+            #       to keep consistent to the rest of slicer's API.
+            if _safe_isinstance(o, "scipy.sparse.csc", "csc_matrix"):
+                return AtomicSlicer(o.toarray().flatten(), max_dim=max_dim)[tail_index]
+            elif _safe_isinstance(o, "scipy.sparse.csr", "csr_matrix"):
+                return AtomicSlicer(o.toarray().flatten(), max_dim=max_dim)[tail_index]
+            elif _safe_isinstance(o, "scipy.sparse.dok", "dok_matrix"):
+                return AtomicSlicer(o.toarray().flatten(), max_dim=max_dim)[tail_index]
+            elif _safe_isinstance(o, "scipy.sparse.lil", "lil_matrix"):
+                return AtomicSlicer(o.toarray().flatten(), max_dim=max_dim)[tail_index]
+            else:
+                return AtomicSlicer(o, max_dim=max_dim)[tail_index]
         else:
             inner = [AtomicSlicer(e, max_dim=max_dim)[tail_index] for e in o]
             if _safe_isinstance(o, "numpy", "ndarray"):
@@ -427,6 +439,22 @@ class ArrayHandler(BaseHandler):
                     return torch.stack(inner)
                 else:
                     return torch.tensor(inner)
+            elif _safe_isinstance(o, "scipy.sparse.csc", "csc_matrix"):
+                from scipy.sparse import vstack
+                out = vstack(inner, format='csc')
+                return out
+            elif _safe_isinstance(o, "scipy.sparse.csr", "csr_matrix"):
+                from scipy.sparse import vstack
+                out = vstack(inner, format='csr')
+                return out
+            elif _safe_isinstance(o, "scipy.sparse.dok", "dok_matrix"):
+                from scipy.sparse import vstack
+                out = vstack(inner, format='dok')
+                return out
+            elif _safe_isinstance(o, "scipy.sparse.lil", "lil_matrix"):
+                from scipy.sparse import vstack
+                out = vstack(inner, format='lil')
+                return out
             else:
                 raise ValueError(f"Cannot handle type {type(o)}.")  # pragma: no cover
 
@@ -519,6 +547,10 @@ class UnifiedDataHandler:
         ("builtins", "dict"): DictHandler,
         ("torch", "Tensor"): ArrayHandler,
         ("numpy", "ndarray"): ArrayHandler,
+        ("scipy.sparse.csc", "csc_matrix"): ArrayHandler,
+        ("scipy.sparse.csr", "csr_matrix"): ArrayHandler,
+        ("scipy.sparse.dok", "dok_matrix"): ArrayHandler,
+        ("scipy.sparse.lil", "lil_matrix"): ArrayHandler,
         ("pandas.core.frame", "DataFrame"): DataFrameHandler,
         ("pandas.core.series", "Series"): SeriesHandler,
     }

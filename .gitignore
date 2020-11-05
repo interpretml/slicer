@@ -10,3 +10,4 @@ dist/
 htmlcov/
 .idea/
 staging/
+.vscode/
