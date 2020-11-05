@@ -16,6 +16,7 @@ It supports many data types including:
 &nbsp;&nbsp;
 [numpy](https://github.com/numpy/numpy) |
 [pandas](https://github.com/pandas-dev/pandas) |
+[scipy](https://docs.scipy.org/doc/scipy/reference/sparse.html) |
 [pytorch](https://github.com/pytorch/pytorch) |
 [list](https://github.com/python/cpython) |
 [tuple](https://github.com/python/cpython) |
