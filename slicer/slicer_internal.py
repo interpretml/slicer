@@ -276,6 +276,15 @@ class AliasLookup:
                 dim_lookup[x] = set()
             dim_lookup[x].add(i)
 
+    def delete(self, alias):
+        '''Delete an alias that exists from lookup'''
+        dim = alias.dim[0]
+        dim_lookup = self._lookup[dim]
+        # NOTE: Alias must be backed by either a list or dictionary.
+        itr = enumerate(alias.o) if isinstance(alias.o, list) else alias.o.items()
+        for i, x in itr:
+            del dim_lookup[x]
+
     def get(self, dim, target, default=None):
         if dim not in self._lookup:
             return default

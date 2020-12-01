@@ -3,7 +3,7 @@ The little slicer that could.
 """
 # TODO: Move Obj and Alias class here.
 
-from .slicer_internal import AtomicSlicer, Alias, Obj, AliasLookup, UnifiedDataHandler
+from .slicer_internal import AtomicSlicer, Alias, Obj, AliasLookup, Tracked, UnifiedDataHandler
 from .slicer_internal import reduced_o, resolve_dim, unify_slice
 
 
@@ -155,14 +155,31 @@ class Slicer:
         if key.startswith("_"):
             return super(Slicer, self).__setattr__(key, value)
 
+        # Grab previous objects if they exist:
+        old_obj = self._objects.get(key, None)
+        old_alias = self._aliases.get(key, None)
+
+        # For existing attributes, honor Alias status and dimension unless specified otherwise
+        if getattr(self, key, None) and key != "o":
+            if not isinstance(value, Tracked):
+                if old_obj:
+                    value = Obj(value, dim=old_obj.dim)
+                elif old_alias:
+                    value = Alias(value, dim=old_alias.dim)
+
         if isinstance(value, Alias):
             value._name = key
             self._aliases[key] = value
+            
+            if old_obj: # If object previously existed as an object, clean up all references.
+                del self._objects[key]
 
             # Build lookup (for perf)
             if self._alias_lookup is None:
                 self._alias_lookup = AliasLookup(self._aliases)
             else:
+                if old_alias:
+                    self._alias_lookup.delete(old_alias)
                 self._alias_lookup.update(value)
         else:
             if key == "o":
@@ -174,6 +191,10 @@ class Slicer:
                 os = reduced_o(self._anon)
                 super(Slicer, self).__setattr__(key, os)
             else:
+                if old_alias: # If object previously existed as an alias, clean up all references.
+                    self._alias_lookup.delete(old_alias) 
+                    del self._aliases[key]
+                
                 value = Obj(value) if not isinstance(value, Obj) else value
                 value._name = key
                 self._objects[key] = value
