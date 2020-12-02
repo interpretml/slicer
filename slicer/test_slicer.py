@@ -449,3 +449,33 @@ def test_operations_3d():
         assert ctr_eq(
             slicer[0, ..., 1], [elements[0][i][1] for i in range(len(elements[0]))]
         )
+
+def test_attribute_assignment():
+    data = [[1, 2], [3, 4]]
+    values = [[5, 6], [7, 8]]
+    identifiers = ["id1", "id1"]
+    instance_names = ["r1", "r2"]
+    feature_names = ["f1", "f2"]
+    full_name = "A"
+
+    exp = S(
+        data=data,
+        values=values,
+        identifiers=A(identifiers, 0),
+        instance_names=A(instance_names, 0),
+        feature_names=A(feature_names, 1),
+        full_name=full_name,
+    )
+
+    exp.feature_names = ['f3', 'f4']
+
+    assert exp.feature_names == ['f3', 'f4']
+    assert exp[:, 0].feature_names == 'f3'
+    
+    with pytest.raises(Exception):
+        _ = exp[:, 'f1'] # f1 should no longer exist as valid alias
+
+    exp.feature_names = A(['f5', 'f6'], dim=0)
+
+    assert exp.feature_names == ['f5', 'f6']
+    assert exp[1, :].feature_names == 'f6' # feature_names now tracks dim 0
