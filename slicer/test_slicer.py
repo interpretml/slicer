@@ -22,6 +22,22 @@ from scipy.sparse import lil_matrix
 from .utils_testing import ctr_eq
 
 
+def test_slicer_ragged_numpy():
+    values = np.array([
+        np.array([0, 1]),
+        np.array([2, 3, 4])
+    ])
+    data = np.array([
+        np.array([5, 6, 7]),
+    ])
+
+    slicer = S(values=values, data=data)
+    sliced = slicer[0, 1]
+
+    assert ctr_eq(sliced.data, data[0][1])
+    assert ctr_eq(sliced.values, values[0][1])
+
+
 def test_slicer_basic():
     data = [[1, 2], [3, 4]]
     values = [[5, 6], [7, 8]]

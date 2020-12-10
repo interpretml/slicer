@@ -408,9 +408,9 @@ class ArrayHandler(BaseHandler):
         cut = 1
 
         for sub_index in tail_index:
-            cut += 1
-            if isinstance(sub_index, str):
+            if isinstance(sub_index, str) or cut == len(o.shape):
                 break
+            cut += 1
 
         # Process native array dimensions
         cut_index = index_tup[:cut]
@@ -469,7 +469,10 @@ class ArrayHandler(BaseHandler):
 
     @classmethod
     def max_dim(cls, o):
-        return len(o.shape)
+        if _safe_isinstance(o, "numpy", "ndarray") and o.dtype == "object":
+            return max([UnifiedDataHandler.max_dim(x) for x in o], default=-1) + 1
+        else:
+            return len(o.shape)
 
 
 class DictHandler(BaseHandler):
