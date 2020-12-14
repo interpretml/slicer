@@ -160,7 +160,7 @@ class Slicer:
         old_alias = self._aliases.get(key, None)
 
         # For existing attributes, honor Alias status and dimension unless specified otherwise
-        if getattr(self, key, None) and key != "o":
+        if getattr(self, key, None) is not None and key != "o":
             if not isinstance(value, Tracked):
                 if old_obj:
                     value = Obj(value, dim=old_obj.dim)
