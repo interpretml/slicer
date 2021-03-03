@@ -439,7 +439,10 @@ class ArrayHandler(BaseHandler):
             inner = [AtomicSlicer(e, max_dim=max_dim)[tail_index] for e in o]
             if _safe_isinstance(o, "numpy", "ndarray"):
                 import numpy
-                ragged = not all(len(x) == len(inner[0]) for x in inner)
+                if len(inner) > 0 and hasattr(inner[0], "__len__"):
+                    ragged = not all(len(x) == len(inner[0]) for x in inner)
+                else:
+                    ragged = False
                 if ragged:
                     return numpy.array(inner, dtype=numpy.object)
                 else:
