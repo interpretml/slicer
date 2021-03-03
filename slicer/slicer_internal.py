@@ -439,8 +439,11 @@ class ArrayHandler(BaseHandler):
             inner = [AtomicSlicer(e, max_dim=max_dim)[tail_index] for e in o]
             if _safe_isinstance(o, "numpy", "ndarray"):
                 import numpy
-
-                return numpy.array(inner)
+                ragged = not all(len(x) == len(inner[0]) for x in inner)
+                if ragged:
+                    return numpy.array(inner, dtype=numpy.object)
+                else:
+                    return numpy.array(inner)
             elif _safe_isinstance(o, "torch", "Tensor"):
                 import torch
 
