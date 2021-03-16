@@ -146,6 +146,9 @@ class Slicer:
         if item.startswith("_"):
             return super(Slicer, self).__getattr__(item)
 
+        if item == "shape":
+            return self._shape
+
         if item == "o":
             return reduced_o(self._anon)
         else:
@@ -181,6 +184,9 @@ class Slicer:
         """
         if key.startswith("_"):
             return super(Slicer, self).__setattr__(key, value)
+
+        if key == "shape":
+            raise ValueError("Cannot re-assign shape. What did you think would happen?")
 
         # For existing attributes, honor Alias status and dimension unless specified otherwise
         if getattr(self, key, None) is not None and key != "o":
@@ -239,6 +245,9 @@ class Slicer:
         """
         if item.startswith("_"):
             return super(Slicer, self).__delattr__(item)
+
+        if item == "shape":
+            raise AttributeError("Cannot delete shape. What did you think would happen?")
 
         # Sync private attributes that help track
         self._clear_entries(item)

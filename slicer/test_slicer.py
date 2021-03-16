@@ -1,7 +1,6 @@
 """ Basic tests for slicer.
 An unholy balance of use cases and test coverage.
 """
-# TODO: Update key tests to handle Dim.
 
 import pytest
 
@@ -27,22 +26,22 @@ from .utils_testing import container_eq
 def test_slicer_shape_numpy():
     values = np.array([[1, 2], [3, 4]])
     slicer = S(values=values)
-    assert slicer._shape == (2, 2)
+    assert slicer.shape == (2, 2)
 
     sliced = slicer[0]
-    assert sliced._shape == (2,)
+    assert sliced.shape == (2,)
 
 
-# def test_slicer_ragged_shape():
-#     values = [
-#         np.array([1, 2, 3]),
-#         np.array([[1, 2], [3, 4]])
-#     ]
-#     slicer = S(values=values)
-#     assert slicer.shape == (2, None, None)
-#
-#     sliced = slicer[0]
-#     assert container_eq(sliced.values, values[0])
+def test_slicer_ragged_shape():
+    values = [
+        np.array([1, 2, 3]),
+        np.array([[1, 2], [3, 4]])
+    ]
+    slicer = S(values=values)
+    assert slicer.shape == (2, None, None)
+
+    sliced = slicer[0]
+    assert container_eq(sliced.values, values[0])
 
 
 def test_slicer_dim():
@@ -212,9 +211,14 @@ def test_slicer_crud():
     del slicer.o
     assert slicer.o == []
 
+    with pytest.raises(AttributeError):
+        del slicer.shape
+
+    with pytest.raises(ValueError):
+        slicer.shape = tuple([1])
+
 
 def test_slicer_default_alias():
-
     df = pd.DataFrame([[1, 2], [3, 4]], columns=["A", "B"])
     slicer = S(df)
     assert getattr(slicer, "index", None)
@@ -368,6 +372,23 @@ def test_slicer_pandas():
     assert slicer["X"].o == 1
     assert slicer[0].o == 1
     assert container_eq(slicer[:].o, [1, 2])
+
+
+def test_slicer_nested_pandas():
+    # NOTE: We don't currently support nested indexing.
+    # We assume the index is done on the top-level data frame or series only.
+    di = {"A": [1, 2], "B": [3, 4], "C": [5, 6]}
+    inner_df = pd.DataFrame(di)
+    di["D"] = [inner_df, inner_df]
+    df = pd.DataFrame(di)
+
+    slicer = S(df)
+    assert slicer[0, "A"].o == 1
+    assert container_eq(slicer[:, "A"].o, [1, 2])
+    assert container_eq(slicer[0, :].o, [1, 3, 5, inner_df])
+
+    slicer = S(df)
+    assert container_eq(slicer[0, "D"].o, inner_df)
 
 
 def test_handle_newaxis_ellipses():

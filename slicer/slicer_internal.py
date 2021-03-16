@@ -363,6 +363,7 @@ class BaseHandler:
         return []
 
 
+# NOTE: Consider supporting nested indexing within pandas collections.
 class SeriesHandler(BaseHandler):
     @classmethod
     def head_slice(cls, o, index_tup, max_dim):
@@ -380,20 +381,11 @@ class SeriesHandler(BaseHandler):
 
     @classmethod
     def max_dim(cls, o):
-        if o.dtype == 'object':
-            return max([UnifiedDataHandler.max_dim(x) for x in o], default=-1) + 1
-        else:
-            return len(o.shape)
+        return len(o.shape)
 
     @classmethod
     def shape(cls, o):
-        if o.dtype == 'object':
-            shape_left = o.shape
-            shape_elements = [UnifiedDataHandler.shape(x) for x in o]
-            shape_right = merge_shapes(shape_elements)
-            return shape_left + shape_right
-        else:
-            return o.shape
+        return o.shape
 
     @classmethod
     def default_alias(cls, o):
@@ -420,20 +412,11 @@ class DataFrameHandler(BaseHandler):
 
     @classmethod
     def max_dim(cls, o):
-        if any(o.dtypes == 'object'):
-            return max([UnifiedDataHandler.max_dim(o[x]) for x in o], default=-1) + 1
-        else:
-            return len(o.shape)
+        return len(o.shape)
 
     @classmethod
     def shape(cls, o):
-        if any(o.dtypes == 'object'):
-            shape_left = o.shape
-            shape_elements = [UnifiedDataHandler.shape(o[x]) for x in o]
-            shape_right = merge_shapes(shape_elements)
-            return shape_left + shape_right
-        else:
-            return o.shape
+        return o.shape
 
     @classmethod
     def default_alias(cls, o):
