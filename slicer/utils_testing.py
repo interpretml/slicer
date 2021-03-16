@@ -39,7 +39,7 @@ def is_close(
     return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
-def ctr_eq(c1: Any, c2: Any):
+def container_eq(c1: Any, c2: Any):
     if isinstance(c1, torch.Tensor) and c1.shape == torch.Size([]):
         c1 = c1.item()
     if isinstance(c2, torch.Tensor) and c2.shape == torch.Size([]):
@@ -47,8 +47,10 @@ def ctr_eq(c1: Any, c2: Any):
 
     if isinstance(c1, numbers.Number) and isinstance(c2, numbers.Number):
         return is_close(c1, c2)
+    if isinstance(c1, str) and isinstance(c2, str):
+        return c1 == c2
 
     c1 = coerced(c1)
     c2 = coerced(c2)
 
-    return all([ctr_eq(c1[i], c2[i]) for i in range(max(len(c1), len(c2)))])
+    return all([container_eq(c1[i], c2[i]) for i in range(max(len(c1), len(c2)))])

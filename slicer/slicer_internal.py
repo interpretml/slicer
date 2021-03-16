@@ -39,6 +39,7 @@ class AtomicSlicer:
         """
         self.o = o
         self.max_dim = max_dim
+        self.shape = UnifiedDataHandler.shape(o)
         if self.max_dim == "auto":
             self.max_dim = UnifiedDataHandler.max_dim(o)
 
@@ -206,6 +207,17 @@ def _handle_aliases(index_tup: Tuple, alias_lookup) -> Tuple:
     return tuple(new_index_tup)
 
 
+class Dim:
+    """ Dim describes metadata per dimension for a given Slicer. I.e. shape."""
+    def __init__(self, o: Any):
+        """ Initialize with an iterable that has one entry per dimension of a slicer.
+
+        Args:
+            o: Iterable that has one entry per dimension of a slicer.
+        """
+        self.o = o
+
+
 class Tracked(AtomicSlicer):
     """ Tracked defines an object that slicer wraps."""
 
@@ -299,7 +311,7 @@ class AliasLookup:
             return list(indexes)
 
 
-def resolve_dim(slicer_index: Tuple, slicer_dim: List) -> List:
+def resolve_dim(slicer_index: Tuple, slicer_dim: List, o: Any) -> List:
     """ Extracts new dim after applying slicing index and maps it back to the original index list. """
 
     new_slicer_dim = []
@@ -315,7 +327,8 @@ def resolve_dim(slicer_index: Tuple, slicer_dim: List) -> List:
         if reduced_mask[curr_dim] == 0:
             new_slicer_dim.append(curr_dim - sum(reduced_mask[:curr_dim]))
 
-    return new_slicer_dim
+    trimmed_len = UnifiedDataHandler.max_dim(o)
+    return new_slicer_dim[:trimmed_len]
 
 
 def reduced_o(tracked: Tracked) -> Union[List, Any]:
@@ -328,17 +341,22 @@ class BaseHandler:
     @classmethod
     @abstractmethod
     def head_slice(cls, o, index_tup, max_dim):
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError(f"Type {type(o)} not supported.")  # pragma: no cover
 
     @classmethod
     @abstractmethod
     def tail_slice(cls, o, tail_index, max_dim, flatten=True):
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError(f"Type {type(o)} not supported.")  # pragma: no cover
 
     @classmethod
     @abstractmethod
     def max_dim(cls, o):
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError(f"Type {type(o)} not supported.")  # pragma: no cover
+
+    @classmethod
+    @abstractmethod
+    def shape(cls, o):
+        raise NotImplementedError(f"Type {type(o)} not supported.")  # pragma: no cover
 
     @classmethod
     def default_alias(cls, o):
@@ -362,7 +380,20 @@ class SeriesHandler(BaseHandler):
 
     @classmethod
     def max_dim(cls, o):
-        return len(o.shape)
+        if o.dtype == 'object':
+            return max([UnifiedDataHandler.max_dim(x) for x in o], default=-1) + 1
+        else:
+            return len(o.shape)
+
+    @classmethod
+    def shape(cls, o):
+        if o.dtype == 'object':
+            shape_left = o.shape
+            shape_elements = [UnifiedDataHandler.shape(x) for x in o]
+            shape_right = merge_shapes(shape_elements)
+            return shape_left + shape_right
+        else:
+            return o.shape
 
     @classmethod
     def default_alias(cls, o):
@@ -389,7 +420,20 @@ class DataFrameHandler(BaseHandler):
 
     @classmethod
     def max_dim(cls, o):
-        return len(o.shape)
+        if any(o.dtypes == 'object'):
+            return max([UnifiedDataHandler.max_dim(o[x]) for x in o], default=-1) + 1
+        else:
+            return len(o.shape)
+
+    @classmethod
+    def shape(cls, o):
+        if any(o.dtypes == 'object'):
+            shape_left = o.shape
+            shape_elements = [UnifiedDataHandler.shape(o[x]) for x in o]
+            shape_right = merge_shapes(shape_elements)
+            return shape_left + shape_right
+        else:
+            return o.shape
 
     @classmethod
     def default_alias(cls, o):
@@ -474,6 +518,16 @@ class ArrayHandler(BaseHandler):
         else:
             return len(o.shape)
 
+    @classmethod
+    def shape(cls, o):
+        if _safe_isinstance(o, "numpy", "ndarray") and o.dtype == "object":
+            shape_left = o.shape
+            shape_elements = [UnifiedDataHandler.shape(x) for x in o]
+            shape_right = merge_shapes(shape_elements)
+            return shape_left + shape_right
+        else:
+            return o.shape
+
 
 class DictHandler(BaseHandler):
     @classmethod
@@ -510,6 +564,13 @@ class DictHandler(BaseHandler):
     @classmethod
     def max_dim(cls, o):
         return max([UnifiedDataHandler.max_dim(x) for x in o.values()], default=-1) + 1
+
+    @classmethod
+    def shape(cls, o):
+        shape_left = tuple([len(o)])
+        shape_elements = [UnifiedDataHandler.shape(x) for x in o.values()]
+        shape_right = merge_shapes(shape_elements)
+        return shape_left + shape_right
 
 
 class ListTupleHandler(BaseHandler):
@@ -548,6 +609,13 @@ class ListTupleHandler(BaseHandler):
     def max_dim(cls, o):
         return max([UnifiedDataHandler.max_dim(x) for x in o], default=-1) + 1
 
+    @classmethod
+    def shape(cls, o):
+        shape_left = tuple([len(o)])
+        shape_elements = [UnifiedDataHandler.shape(x) for x in o]
+        shape_right = merge_shapes(shape_elements)
+        return shape_left + shape_right
+
 
 class UnifiedDataHandler:
     """ Registry that maps types to their unified slice calls."""
@@ -574,14 +642,26 @@ class UnifiedDataHandler:
         if isinstance(index_tup, (tuple, list)) and len(index_tup) == 0:
             return o
 
-        # Slice as delegated by data handler.
+        # If attempting to slice an element, return early.
         o_type = _type_name(o)
+        if o_type not in cls.type_map:
+            if not hasattr(o, '__len__') or isinstance(o, str):
+                return o
+
+        # Slice as delegated by data handler.
         head_slice = cls.type_map[o_type].head_slice
         tail_slice = cls.type_map[o_type].tail_slice
 
         is_element, sliced_o, cut = head_slice(o, index_tup, max_dim)
         out = tail_slice(sliced_o, index_tup[cut:], max_dim - cut, is_element)
         return out
+
+    @classmethod
+    def shape(cls, o):
+        o_type = _type_name(o)
+        if o_type not in cls.type_map:
+            return tuple()
+        return cls.type_map[o_type].shape(o)
 
     @classmethod
     def max_dim(cls, o):
@@ -610,3 +690,25 @@ def _safe_isinstance(
         return o_module == module_name and o_type == type_name
     else:
         return o_module == module_name and o_type in type_name
+
+
+def merge_shapes(shape_elements):
+    if len(shape_elements) == 0:
+        return tuple()
+
+    shape_min_len = min([len(s) for s in shape_elements])
+    shape_max_len = max([len(s) for s in shape_elements])
+
+    # Define shape where all inner dimensions have the same length.
+    shape_builder = []
+    for i in range(shape_min_len):
+        shape_current = set(s[i] for s in shape_elements)
+        if len(shape_current) == 1:
+            shape_builder.append(shape_current.pop())
+        else:
+            shape_builder.append(None)
+
+    # Pad to max length, as we know this component is jagged.
+    shape_builder.extend([None] * (shape_max_len - shape_min_len))
+    final_shape = tuple(shape_builder)
+    return final_shape

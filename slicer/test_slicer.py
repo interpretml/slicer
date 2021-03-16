@@ -1,6 +1,7 @@
 """ Basic tests for slicer.
 An unholy balance of use cases and test coverage.
 """
+# TODO: Update key tests to handle Dim.
 
 import pytest
 
@@ -9,6 +10,7 @@ from .slicer import AtomicSlicer
 from . import Slicer as S
 from . import Alias as A
 from . import Obj as O
+from . import Dim as D
 
 import pandas as pd
 import numpy as np
@@ -19,7 +21,51 @@ from scipy.sparse import dok_matrix
 from scipy.sparse import lil_matrix
 
 
-from .utils_testing import ctr_eq
+from .utils_testing import container_eq
+
+
+def test_slicer_shape_numpy():
+    values = np.array([[1, 2], [3, 4]])
+    slicer = S(values=values)
+    assert slicer._shape == (2, 2)
+
+    sliced = slicer[0]
+    assert sliced._shape == (2,)
+
+
+# def test_slicer_ragged_shape():
+#     values = [
+#         np.array([1, 2, 3]),
+#         np.array([[1, 2], [3, 4]])
+#     ]
+#     slicer = S(values=values)
+#     assert slicer.shape == (2, None, None)
+#
+#     sliced = slicer[0]
+#     assert container_eq(sliced.values, values[0])
+
+
+def test_slicer_dim():
+    values = np.array([[1, 2], [3, 4]])
+
+    dim_names = ["row", "column"]
+
+    slicer = S(values=values, dim_names=D(dim_names))
+    sliced = slicer[0]
+
+    assert container_eq(sliced.values, values[0])
+    assert container_eq(sliced.dim_names, [dim_names[1]])
+
+
+def test_slicer_ragged_mixed_dim_numpy():
+    values = [
+        np.array([1, 2, 3]),
+        np.array([[1, 2], [3, 4]])
+    ]
+    slicer = S(values=values)
+    sliced = slicer[0]
+
+    assert container_eq(sliced.values, values[0])
 
 
 def test_slicer_ragged_numpy():
@@ -34,8 +80,8 @@ def test_slicer_ragged_numpy():
     slicer = S(values=values, data=data)
     sliced = slicer[0, 1]
 
-    assert ctr_eq(sliced.data, data[0][1])
-    assert ctr_eq(sliced.values, values[0][1])
+    assert container_eq(sliced.data, data[0][1])
+    assert container_eq(sliced.values, values[0][1])
 
 
 def test_slicer_basic():
@@ -44,6 +90,7 @@ def test_slicer_basic():
     identifiers = ["id1", "id1"]
     instance_names = ["r1", "r2"]
     feature_names = ["f1", "f2"]
+    dimension_names = ["instances", "features"]
     full_name = "A"
 
     slicer = S(
@@ -53,6 +100,7 @@ def test_slicer_basic():
         instance_names=A(instance_names, 0),
         feature_names=A(feature_names, 1),
         full_name=full_name,
+        dimension_names=D(dimension_names),
     )
 
     colon_actual = slicer[:, 1]
@@ -60,42 +108,49 @@ def test_slicer_basic():
     assert colon_actual.instance_names == ["r1", "r2"]
     assert colon_actual.feature_names == "f2"
     assert colon_actual.values == [6, 8]
+    assert colon_actual.dimension_names == ["instances"]
 
     ellipses_actual = slicer[..., 1]
     assert ellipses_actual.data == [2, 4]
     assert ellipses_actual.instance_names == ["r1", "r2"]
     assert ellipses_actual.feature_names == "f2"
     assert ellipses_actual.values == [6, 8]
+    assert ellipses_actual.dimension_names == ["instances"]
 
     array_index_actual = slicer[[0, 1], 1]
     assert array_index_actual.data == [2, 4]
     assert array_index_actual.feature_names == "f2"
     assert array_index_actual.instance_names == ["r1", "r2"]
     assert array_index_actual.values == [6, 8]
+    assert array_index_actual.dimension_names == ["instances"]
 
     alias_actual = slicer["r1", "f2"]
     assert alias_actual.data == 2
     assert alias_actual.feature_names == "f2"
     assert alias_actual.instance_names == "r1"
     assert alias_actual.values == 6
+    assert alias_actual.dimension_names == []
 
     alias_actual = slicer["id1", "f2"]
     assert alias_actual.data == [2, 4]
     assert alias_actual.feature_names == "f2"
     assert alias_actual.instance_names == ["r1", "r2"]
     assert alias_actual.values == [6, 8]
+    assert alias_actual.dimension_names == ["instances"]
 
     chained_actual = slicer[:][:, 1]
     assert chained_actual.data == [2, 4]
     assert chained_actual.feature_names == "f2"
     assert chained_actual.instance_names == ["r1", "r2"]
     assert chained_actual.values == [6, 8]
+    assert chained_actual.dimension_names == ["instances"]
 
     alias_actual = slicer["id1"][:, "f2"]
     assert alias_actual.data == [2, 4]
     assert alias_actual.feature_names == "f2"
     assert alias_actual.instance_names == ["r1", "r2"]
     assert alias_actual.values == [6, 8]
+    assert alias_actual.dimension_names == ["instances"]
 
     alias_actual = slicer["r1"]
     alias_actual = alias_actual["f2"]
@@ -103,6 +158,7 @@ def test_slicer_basic():
     assert alias_actual.feature_names == "f2"
     assert alias_actual.instance_names == "r1"
     assert alias_actual.values == 6
+    assert alias_actual.dimension_names == []
 
 
 def test_slicer_unnamed():
@@ -119,8 +175,8 @@ def test_slicer_unnamed():
     slicer = S(df1, df2)
     actual_1, actual_2 = slicer[:, 0].o
 
-    assert ctr_eq(actual_1.values, [1, 3])
-    assert ctr_eq(actual_2.values, [5, 7])
+    assert container_eq(actual_1.values, [1, 3])
+    assert container_eq(actual_2.values, [5, 7])
 
 
 def test_slicer_crud():
@@ -128,17 +184,29 @@ def test_slicer_crud():
     values = [[5, 6], [7, 8]]
     extra = [[9, 10], [11, 12]]
     overridden = [[13, 14], [15, 16]]
+    dim_names = ["row", "column"]
+    dim_names_overridden = ["over_row", "over_column"]
 
-    slicer = S(data=data, values=values)
+    slicer = S(data=data, values=values, dim_names=D(dim_names))
     slicer.extra = extra  # Create
     slicer.data = overridden  # Update
+
+    assert container_eq(slicer.dim_names, dim_names)
+    slicer.dim_names = dim_names_overridden  # Update
+    assert container_eq(slicer.dim_names, dim_names_overridden)
+
+    sliced = slicer[0]  # Read
+    assert container_eq(sliced.dim_names, ["over_column"])
+
     del slicer.values  # Delete
+    del slicer.dim_names  # Delete
 
     sliced = slicer[0, 1]  # Read
     assert sliced.data == 14
     with pytest.raises(Exception):
         _ = sliced.values
-
+    with pytest.raises(Exception):
+        _ = sliced.dim_names
     assert sliced.extra == 10
 
     del slicer.o
@@ -152,7 +220,7 @@ def test_slicer_default_alias():
     assert getattr(slicer, "index", None)
     assert getattr(slicer, "columns", None)
     actual = slicer[:, "A"].o
-    assert ctr_eq(actual, [1, 3])
+    assert container_eq(actual, [1, 3])
 
 
 def test_slicer_anon_dict():
@@ -174,15 +242,15 @@ def test_slicer_3d():
 
     slicer = S(data=data_2d, values=values_3d, names=A(names, 2))
     actual = slicer[..., 1]
-    assert ctr_eq(actual.data, data_2d)
+    assert container_eq(actual.data, data_2d)
     assert actual.names == "b"
 
     actual = slicer[0, :, 1]
-    assert ctr_eq(actual.data, data_2d[0])
+    assert container_eq(actual.data, data_2d[0])
     assert actual.names == "b"
 
     actual = slicer[0, :][:, 1]
-    assert ctr_eq(actual.data, data_2d[0])
+    assert container_eq(actual.data, data_2d[0])
     assert actual.names == "b"
 
 
@@ -194,7 +262,7 @@ def test_untracked():
     actual = slicer[:2]
     assert actual.data == data[:2]
     assert actual.primitive == primitive
-    assert ctr_eq(actual.collection, collection)
+    assert container_eq(actual.collection, collection)
 
 
 def test_partial_untracked():
@@ -210,7 +278,7 @@ def test_numpy_subkeys():
     assert slicer[subkey].data == 2
 
     subkey = np.array([0, 1])
-    assert ctr_eq(slicer[subkey].data, [1, 2])
+    assert container_eq(slicer[subkey].data, [1, 2])
 
     subkey = np.array([[0, 1], [3, 4]])
     with pytest.raises(ValueError):
@@ -230,11 +298,11 @@ def test_slicer_simple_di():
     slicer = S(di)
     actual = slicer["B", 0]
     actual = actual.o
-    assert ctr_eq(actual, 3)
+    assert container_eq(actual, 3)
 
     nested_di = {"X": di, "Y": di}
     actual = S(nested_di)["X", "B", 0].o
-    assert ctr_eq(actual, 3)
+    assert container_eq(actual, 3)
 
 
 def test_slicer_sparse():
@@ -248,25 +316,25 @@ def test_slicer_sparse():
     for candidate in candidates:
         slicer = S(candidate)
         actual = slicer[0, 0]
-        assert ctr_eq(actual.o, 1)
+        assert container_eq(actual.o, 1)
         actual = slicer[1, 1]
-        assert ctr_eq(actual.o, 0)
+        assert container_eq(actual.o, 0)
 
         actual = slicer[0]
         expected = np.array([1, 0, 4])
-        assert ctr_eq(actual.o, expected)
+        assert container_eq(actual.o, expected)
 
         actual = slicer[:, 1]
         expected = np.array([0, 0, 3])
-        assert ctr_eq(actual.o, expected)
+        assert container_eq(actual.o, expected)
 
         actual = slicer[:, :]
         expected = np.array([[1, 0, 4], [0, 0, 5], [2, 3, 6]])
-        assert ctr_eq(actual.o, expected)
+        assert container_eq(actual.o, expected)
 
         actual = slicer[0, :]
         expected = np.array([1, 0, 4])
-        assert ctr_eq(actual.o, expected)
+        assert container_eq(actual.o, expected)
 
 
 def test_slicer_torch():
@@ -288,8 +356,8 @@ def test_slicer_pandas():
 
     slicer = S(df)
     assert slicer[0, "A"].o == 1
-    assert ctr_eq(slicer[:, "A"].o, [1, 2])
-    assert ctr_eq(slicer[0, :].o, [1, 3, 5])
+    assert container_eq(slicer[:, "A"].o, [1, 2])
+    assert container_eq(slicer[0, :].o, [1, 3, 5])
 
     df = pd.DataFrame(di, index=["X", "Y"])
     slicer = S(df)
@@ -299,7 +367,7 @@ def test_slicer_pandas():
     slicer = S(df["A"])
     assert slicer["X"].o == 1
     assert slicer[0].o == 1
-    assert ctr_eq(slicer[:].o, [1, 2])
+    assert container_eq(slicer[:].o, [1, 2])
 
 
 def test_handle_newaxis_ellipses():
@@ -344,20 +412,20 @@ def test_operations_1d():
     for _, ctr in enumerate(containers):
         slicer = AtomicSlicer(ctr)
 
-        assert ctr_eq(slicer[0], elements[0])
+        assert container_eq(slicer[0], elements[0])
 
         # Array
-        assert ctr_eq(slicer[[0, 1, 2, 3]], elements)
-        assert ctr_eq(slicer[[0, 1, 2]], elements[:-1])
+        assert container_eq(slicer[[0, 1, 2, 3]], elements)
+        assert container_eq(slicer[[0, 1, 2]], elements[:-1])
 
         # All
-        assert ctr_eq(slicer[:], elements[:])
-        assert ctr_eq(slicer[tuple()], elements)
+        assert container_eq(slicer[:], elements[:])
+        assert container_eq(slicer[tuple()], elements)
 
         # Ranged slicing
         if not isinstance(ctr, dict):  # Do not test on dictionaries.
-            assert ctr_eq(slicer[-1], elements[-1])
-            assert ctr_eq(slicer[0:3:2], elements[0:3:2])
+            assert container_eq(slicer[-1], elements[-1])
+            assert container_eq(slicer[0:3:2], elements[0:3:2])
 
 
 def test_operations_2d():
@@ -374,27 +442,27 @@ def test_operations_2d():
     for _, ctr in enumerate(containers):
         slicer = AtomicSlicer(ctr)
 
-        assert ctr_eq(slicer[0], elements[0])
+        assert container_eq(slicer[0], elements[0])
 
         # Ranged slicing
         if not isinstance(ctr, dict):
-            assert ctr_eq(slicer[-1], elements[-1])
-            assert ctr_eq(slicer[0, 0:3:2], elements[0][0:3:2])
+            assert container_eq(slicer[-1], elements[-1])
+            assert container_eq(slicer[0, 0:3:2], elements[0][0:3:2])
 
         # Array
-        assert ctr_eq(slicer[[0, 1, 2], :], elements)
+        assert container_eq(slicer[[0, 1, 2], :], elements)
 
         # All
-        assert ctr_eq(slicer[:], elements)
-        assert ctr_eq(slicer[tuple()], elements)
+        assert container_eq(slicer[:], elements)
+        assert container_eq(slicer[tuple()], elements)
 
-        assert ctr_eq(slicer[:, 0], [elements[i][0] for i, _ in enumerate(elements)])
-        assert ctr_eq(slicer[[0, 1], 0], [elements[i][0] for i in [0, 1]])
-        assert ctr_eq(slicer[[0, 1], 1], [elements[i][1] for i in [0, 1]])
-        assert ctr_eq(slicer[0, :], elements[0])
-        assert ctr_eq(slicer[0, 1], elements[0][1])
+        assert container_eq(slicer[:, 0], [elements[i][0] for i, _ in enumerate(elements)])
+        assert container_eq(slicer[[0, 1], 0], [elements[i][0] for i in [0, 1]])
+        assert container_eq(slicer[[0, 1], 1], [elements[i][1] for i in [0, 1]])
+        assert container_eq(slicer[0, :], elements[0])
+        assert container_eq(slicer[0, 1], elements[0][1])
 
-        assert ctr_eq(slicer[..., 0], [elements[i][0] for i, _ in enumerate(elements)])
+        assert container_eq(slicer[..., 0], [elements[i][0] for i, _ in enumerate(elements)])
 
 
 def test_operations_3d():
@@ -435,25 +503,25 @@ def test_operations_3d():
     for _, ctr in enumerate(containers):
         slicer = AtomicSlicer(ctr)
 
-        assert ctr_eq(slicer[0], elements[0])
+        assert container_eq(slicer[0], elements[0])
 
         # Ranged slicing
         if not isinstance(ctr, dict):
-            assert ctr_eq(slicer[-1], elements[-1])
-            assert ctr_eq(slicer[0, 0:3:2], elements[0][0:3:2])
+            assert container_eq(slicer[-1], elements[-1])
+            assert container_eq(slicer[0, 0:3:2], elements[0][0:3:2])
 
         # Array
-        assert ctr_eq(slicer[[0, 1, 2], :], elements)
+        assert container_eq(slicer[[0, 1, 2], :], elements)
 
         # All
-        assert ctr_eq(slicer[:], elements)
-        assert ctr_eq(slicer[tuple()], elements)
+        assert container_eq(slicer[:], elements)
+        assert container_eq(slicer[tuple()], elements)
 
-        assert ctr_eq(slicer[:, 0], [elements[i][0] for i, _ in enumerate(elements)])
-        assert ctr_eq(slicer[[0, 1], 0], [elements[i][0] for i in [0, 1]])
-        assert ctr_eq(slicer[[0, 1], 1], [elements[i][1] for i in [0, 1]])
-        assert ctr_eq(slicer[0, :], elements[0])
-        assert ctr_eq(slicer[0, 1], elements[0][1])
+        assert container_eq(slicer[:, 0], [elements[i][0] for i, _ in enumerate(elements)])
+        assert container_eq(slicer[[0, 1], 0], [elements[i][0] for i in [0, 1]])
+        assert container_eq(slicer[[0, 1], 1], [elements[i][1] for i in [0, 1]])
+        assert container_eq(slicer[0, :], elements[0])
+        assert container_eq(slicer[0, 1], elements[0][1])
 
         rows = []
         for i, _ in enumerate(elements):
@@ -461,8 +529,8 @@ def test_operations_3d():
             for j, _ in enumerate(elements[i]):
                 cols.append(elements[i][j][1])
             rows.append(cols)
-        assert ctr_eq(slicer[..., 1], rows)
-        assert ctr_eq(
+        assert container_eq(slicer[..., 1], rows)
+        assert container_eq(
             slicer[0, ..., 1], [elements[0][i][1] for i in range(len(elements[0]))]
         )
 
