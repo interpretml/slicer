@@ -4,7 +4,7 @@
 ![Package Version](https://img.shields.io/pypi/v/slicer.svg?style=flat-square)
 ![Build Status](https://img.shields.io/azure-devops/build/ms/interpret/405/master?style=flat-square)
 ![Coverage](https://img.shields.io/azure-devops/coverage/ms/interpret/405/master.svg?style=flat-square)
-![Maintenance](https://img.shields.io/maintenance/yes/2020.svg?style=flat-square)
+![Maintenance](https://img.shields.io/maintenance/yes/2021.svg?style=flat-square)
 
 *(Equal Contribution) Samuel Jenkins & Harsha Nori & Scott Lundberg*
 
