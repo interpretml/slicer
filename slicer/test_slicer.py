@@ -22,6 +22,18 @@ from scipy.sparse import lil_matrix
 
 from .utils_testing import container_eq
 
+def test_slicer_protected_iteritems():
+    values = np.array([[1, 2], [3, 4]])
+    alias = ["first", "second"]
+    dim_names = ["row", "column"]
+    slicer = S(values=values, dim_names=D(dim_names), alias=A(alias, 0))
+
+    names = []
+    for name, _ in slicer._iteritems(include_aliases=True, include_dims=True):
+        names.append(name)
+    names = set(names)
+    assert names == set(["values", "dim_names", "alias"])
+
 
 def test_slicer_shape_numpy():
     values = np.array([[1, 2], [3, 4]])

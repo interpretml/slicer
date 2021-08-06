@@ -94,7 +94,7 @@ class Slicer:
         aliases_len = len(slicer_instance._aliases)
         if ((objects_len == 1) ^ (anon_len == 1)) and aliases_len == 0:
             obj = None
-            for _, t in slicer_instance._iter_tracked():
+            for _, t in slicer_instance._iteritems():
                 obj = t
 
             generated_aliases = UnifiedDataHandler.default_alias(obj.o)
@@ -105,7 +105,7 @@ class Slicer:
         index_tup = unify_slice(item, self._max_dim, self._alias_lookup)
         new_args = []
         new_kwargs = {}
-        for name, tracked in self._iter_tracked(include_aliases=True):
+        for name, tracked in self._iteritems(include_aliases=True):
             if len(tracked.dim) == 0:  # No slice on empty dim
                 new_tracked = tracked
             else:
@@ -322,12 +322,12 @@ class Slicer:
 
     def _recompute_stats(self):
         self._max_dim = max(
-            [max(t.dim, default=-1) + 1 for _, t in self._iter_tracked()], default=0
+            [max(t.dim, default=-1) + 1 for _, t in self._iteritems()], default=0
         )
-        for _, t in self._iter_tracked():
+        for _, t in self._iteritems():
             self._shape = self._merge_shape(t)
 
-    def _iter_tracked(self, include_aliases=False):
+    def _iteritems(self, include_aliases=False, include_dims=False):
         for tracked in self._anon:
             yield "o", tracked
         for name, tracked in self._objects.items():
@@ -335,3 +335,6 @@ class Slicer:
         if include_aliases:
             for name, tracked in self._aliases.items():
                 yield name, tracked
+        if include_dims:
+            for name, dim in self._dims.items():
+                yield name, dim

@@ -217,6 +217,14 @@ class Dim:
         """
         self.o = o
 
+    def __repr__(self) -> AnyStr:
+        """ Override default repr for human readability.
+
+        Returns:
+            String to display.
+        """
+        return f"{self.__class__.__name__}({self.o.__repr__()})"
+
 
 class Tracked(AtomicSlicer):
     """ Tracked defines an object that slicer wraps."""
