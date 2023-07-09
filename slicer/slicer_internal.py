@@ -444,7 +444,7 @@ class ArrayHandler(BaseHandler):
                 else:
                     ragged = False
                 if ragged:
-                    return numpy.array(inner, dtype=numpy.object)
+                    return numpy.array(inner, dtype=object)
                 else:
                     return numpy.array(inner)
             elif _safe_isinstance(o, "torch", "Tensor"):
