@@ -26,7 +26,7 @@ def test_slicer_ragged_numpy():
     values = np.array([
         np.array([0, 1]),
         np.array([2, 3, 4])
-    ])
+    ], dtype=object)
     data = np.array([
         np.array([5, 6, 7]),
     ])
