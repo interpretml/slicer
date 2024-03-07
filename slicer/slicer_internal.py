@@ -567,6 +567,8 @@ class UnifiedDataHandler:
         ("numpy", "ndarray"): ArrayHandler,
         ("scipy.sparse.csc", "csc_matrix"): ArrayHandler,
         ("scipy.sparse.csr", "csr_matrix"): ArrayHandler,
+        ("scipy.sparse._csc", "csc_matrix"): ArrayHandler,
+        ("scipy.sparse._csr", "csr_matrix"): ArrayHandler,
         ("scipy.sparse.dok", "dok_matrix"): ArrayHandler,
         ("scipy.sparse.lil", "lil_matrix"): ArrayHandler,
         ("pandas.core.frame", "DataFrame"): DataFrameHandler,
