@@ -567,8 +567,6 @@ class UnifiedDataHandler:
         ("numpy", "ndarray"): ArrayHandler,
         ("scipy.sparse.csc", "csc_matrix"): ArrayHandler,
         ("scipy.sparse.csr", "csr_matrix"): ArrayHandler,
-        ("scipy.sparse._csc", "csc_matrix"): ArrayHandler,
-        ("scipy.sparse._csr", "csr_matrix"): ArrayHandler,
         ("scipy.sparse.dok", "dok_matrix"): ArrayHandler,
         ("scipy.sparse.lil", "lil_matrix"): ArrayHandler,
         ("pandas.core.frame", "DataFrame"): DataFrameHandler,
@@ -607,7 +605,7 @@ class UnifiedDataHandler:
 
 
 def _type_name(o: object) -> Tuple[str, str]:
-    return o.__class__.__module__, o.__class__.__name__
+    return _handle_module_aliases(o.__class__.__module__), o.__class__.__name__
 
 
 def _safe_isinstance(
@@ -618,3 +616,16 @@ def _safe_isinstance(
         return o_module == module_name and o_type == type_name
     else:
         return o_module == module_name and o_type in type_name
+
+
+def _handle_module_aliases(module_name):
+    # scipy modules such as "scipy.sparse.csc" were renamed to "scipy.sparse._csc" in v1.8
+    # Standardise by removing underscores for compatibility with either name
+    # Else just pass module name unchanged
+    module_map = {
+        "scipy.sparse._csc": "scipy.sparse.csc",
+        "scipy.sparse._csr": "scipy.sparse.csr",
+        "scipy.sparse._dok": "scipy.sparse.dok",
+        "scipy.sparse._lil": "scipy.sparse.lil",
+    }
+    return module_map.get(module_name, module_name)
