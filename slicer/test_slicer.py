@@ -246,6 +246,7 @@ def test_slicer_sparse():
 
     candidates = [csc_array, csr_array, dok_array, lil_array]
     for candidate in candidates:
+        print("testing:", type(candidate))
         slicer = S(candidate)
         actual = slicer[0, 0]
         assert ctr_eq(actual.o, 1)
@@ -341,7 +342,8 @@ def test_operations_1d():
     array = np.array(elements)
     torch_array = torch.tensor(elements)
     containers = [li, tup, array, torch_array, di, series]
-    for _, ctr in enumerate(containers):
+    for ctr in containers:
+        print("testing:", type(ctr))
         slicer = AtomicSlicer(ctr)
 
         assert ctr_eq(slicer[0], elements[0])
@@ -371,7 +373,8 @@ def test_operations_2d():
     sparse_lil = lil_matrix(elements)
 
     containers = [li, df, sparse_csc, sparse_csr, sparse_dok, sparse_lil]
-    for _, ctr in enumerate(containers):
+    for ctr in containers:
+        print("testing:", type(ctr))
         slicer = AtomicSlicer(ctr)
 
         assert ctr_eq(slicer[0], elements[0])
@@ -432,7 +435,8 @@ def test_operations_3d():
         list_of_multi_arrays,
         di_of_multi_arrays,
     ]
-    for _, ctr in enumerate(containers):
+    for ctr in containers:
+        print("testing:", type(ctr))
         slicer = AtomicSlicer(ctr)
 
         assert ctr_eq(slicer[0], elements[0])
